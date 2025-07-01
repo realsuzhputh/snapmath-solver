@@ -1,0 +1,62 @@
+import React, { useState } from 'react';
+import Tesseract from 'tesseract.js';
+import { evaluate } from 'mathjs';
+
+export default function SnapMathSolver() {
+  const [image, setImage] = useState(null);
+  const [equation, setEquation] = useState('');
+  const [solution, setSolution] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const imageUrl = URL.createObjectURL(file);
+      setImage(imageUrl);
+      processImage(imageUrl);
+    }
+  };
+
+  const processImage = (imageUrl) => {
+    setLoading(true);
+    Tesseract.recognize(
+      imageUrl,
+      'eng',
+      {
+        logger: (m) => console.log(m),
+      }
+    ).then(({ data: { text } }) => {
+      const cleaned = text.replace(/[^-+*/^0-9xX().=\s]/g, '').trim();
+      const equationLine = cleaned.split('\n')[0];
+      setEquation(equationLine);
+      try {
+        const result = evaluate(equationLine);
+        setSolution(result.toString());
+      } catch (err) {
+        setSolution('Could not evaluate the expression.');
+      }
+      setLoading(false);
+    });
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-4">
+      <h1 className="text-3xl font-bold mb-4">📷 SnapMath Solver</h1>
+      <input type="file" accept="image/*" onChange={handleImageUpload} className="mb-4" />
+      {image && <img src={image} alt="Uploaded" className="max-w-xs mb-4 rounded shadow" />}
+      {loading && <p className="text-blue-500">Processing image...</p>}
+      {equation && (
+        <div className="bg-white p-4 rounded shadow w-full max-w-md text-center">
+          <p className="text-gray-700">Detected Equation:</p>
+          <p className="text-xl font-mono text-black">{equation}</p>
+        </div>
+      )}
+      {solution && (
+        <div className="bg-green-100 mt-4 p-4 rounded shadow w-full max-w-md text-center">
+          <p className="text-gray-700">Solution:</p>
+          <p className="text-2xl font-bold text-green-800">{solution}</p>
+        </div>
+      )}
+    </div>
+  );
+} 
